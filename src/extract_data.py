@@ -3,7 +3,9 @@ import time
 import requests
 from pathlib import Path
 
-USERNAMES = ["nerf_ee", "ee_innit"]
+from config import USERNAMES
+
+USERNAMES = USERNAMES
 ARCHIVES_URL = """https://api.chess.com/pub/player/{username}/games/archives"""
 
 # chess.com's API recommend a recognisable User Agent to avoid error 403s
@@ -31,7 +33,7 @@ def save_json(data: dict, output_path: Path) -> None:
         json.dump(data, f, indent=2)
 
 
-def get_games(username):
+def get_games(username) -> None:
     # case does not matter so standardise for file naming
     username = username.lower()
 
