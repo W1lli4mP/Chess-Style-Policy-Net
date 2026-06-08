@@ -90,11 +90,19 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
     both_players_known = white_is_known & black_is_known
     exactly_one_known = white_is_known ^ black_is_known
 
+    valid_source_username = (
+        df["source_username"].eq(df["white_username"]) |
+        df["source_username"].eq(df["black_username"])
+    )
+
+    invalid_source_username = ~valid_source_username
+
     mask = (
         valid_required &
         valid_time_class &
         valid_rules &
-        exactly_one_known
+        exactly_one_known &
+        valid_source_username
     )
 
     #! optional diagnostics for tracking why games were dropped
@@ -130,6 +138,16 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
             (target_class & both_players_known).sum()
         )
 
+        print(
+            "Games where source username is not a player:",
+            invalid_source_username.sum()
+        )
+
+        print(
+            "Target games where source username is not a player:",
+            (target_class & invalid_source_username).sum()
+        )
+
         #* populate diagnostic df with boolean algebra
         diagnostic_df = df.loc[target_class].copy()
 
@@ -146,11 +164,16 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
             both_players_known.loc[target_class]
         )
 
+        diagnostic_df["invalid_source_username"] = (
+            invalid_source_username.loc[target_class]
+        )
+
         failure_columns = [
             "missing_required",
             "invalid_rules",
             "neither_player_known",
-            "both_players_known"
+            "both_players_known",
+            "invalid_source_username"
         ]
 
         failed = diagnostic_df.loc[
@@ -211,6 +234,10 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
 
     df["rating_diff"] = df["my_rating"] - df["opponent_rating"]
 
+    if diagnostics:
+        duplicate_rows = df.duplicated(subset=["uuid"], keep="first").sum()
+        print("Duplicate UUID rows removed:", duplicate_rows)
+
     df = df.drop_duplicates(subset=["uuid"])
     df = df.sort_values(["source_username", "end_time"])
 
@@ -230,7 +257,7 @@ def build_games_dataset() -> None:
     print(f"Loaded {len(df)} total games")
 
     ## actually filter/clean the data here...
-    df_clean = clean_games_dataframe(df, True)
+    df_clean = clean_games_dataframe(df)
 
     print("\nRemaining games:", len(df_clean))
 
