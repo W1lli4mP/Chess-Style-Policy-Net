@@ -9,8 +9,22 @@ OUTPUT_PATH = Path("data/processed/training_positions.parquet")
 def load_games() -> pd.DataFrame:
     return pd.read_parquet(INPUT_PATH)
 
-def get_move_time_bucket() -> str:
-    pass
+def get_move_time_bucket(
+    move_time_seconds: float | None
+) -> int | None:
+    if move_time_seconds is None:
+        return None
+
+    if move_time_seconds < 0.3:
+        return 0
+    if move_time_seconds < 1.0:
+        return 1
+    if move_time_seconds < 3.0:
+        return 2
+    if move_time_seconds < 8.0:
+        return 3
+    
+    return 4
 
 def parse_game_pgn(pgn: str) -> chess.pgn.Game | None:
     # convert pgn into usable python-chess game object
@@ -25,6 +39,76 @@ def parse_game_pgn(pgn: str) -> chess.pgn.Game | None:
         return None
 
     return game
+
+def parse_time_control(time_control: str) -> tuple[int, int]:
+    # <base-seconds> | <plus> | <increment>
+    if "+" in time_control:
+        base, increment = time_control.split("+", maxsplit=1)
+        return int(base), int(increment)
+
+    return int(time_control), 0
+
+def extract_training_rows(
+    game: chess.pgn.Game,
+    game_row: pd.Series
+) -> list[dict]:
+    """
+        process an entire chess game and return a list of training row dicts containing
+        all information for the board, context and target branches
+    """
+
+    training_rows = []
+    board = game.board()
+
+    base_time_seconds, increment_seconds = parse_time_control(
+        game_row["time_control"]
+    )
+
+    for move in game.mainline_moves():
+        # verify turn
+        my_turn = (
+            board.turn == chess.WHITE
+            and game_row["my_colour"] == "white"
+        ) or (
+            board.turn == chess.BLACK
+            and game_row["my_colour"] == "black"
+        )
+
+        # record moves only if they are my turn
+        if my_turn:
+            my_clock = None
+            opponent_clock = None
+            move_time_seconds = None
+
+            # construct training row with all relevant info
+            training_row = {
+                "game_uuid": game_row["uuid"],
+                "my_username": game_row["my_username"],
+                "end_time": game_row["end_time"],
+
+                **extract_board_fields(board),
+
+                **extract_context_fields(
+                    game_row=game_row,
+                    board=board,
+                    base_time_seconds=base_time_seconds,
+                    increment_seconds=increment_seconds,
+                    my_clock=my_clock,
+                    opponent_clock=opponent_clock
+                ),
+
+                **extract_target_fields(
+                    move=move,
+                    move_time_seconds=move_time_seconds
+                )
+            }
+
+            training_rows.append(training_row)
+
+        # update the board after recording an entire training row
+        board.push(move)
+    
+    return training_rows
 
 def extract_board_fields(board: chess.Board) -> dict:
     return {
@@ -96,22 +180,20 @@ def extract_target_fields(
     return {
         "uci_move": move.uci(),
         "move_time_seconds": move_time_seconds,
-        "move_time_bucket": get_move_time_bucket(move_time_seconds)
+        "move_time_bucket": get_move_time_bucket(move_time_seconds),
+        "has_move_time_target": move_time_seconds is not None
     }
 
 def build_training_dataset() -> None:
     games_df = load_games()
 
-    #* board branch
-    # construct relevant board information via the dataset's PGNs
     for _, game_row in games_df.iterrows():
         game = parse_game_pgn(game_row["pgn"])
 
         if game is None:
             continue
 
-    #* context branch
-    # add non-board info here
+        # retrieve training rows and store into parquet
 
 if __name__ == "__main__":
     build_training_dataset()
