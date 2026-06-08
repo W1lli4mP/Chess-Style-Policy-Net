@@ -5,6 +5,7 @@ import io
 
 INPUT_PATH = Path("data/processed/games_raw.parquet")
 OUTPUT_PATH = Path("data/processed/training_positions.parquet")
+OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 def load_games() -> pd.DataFrame:
     return pd.read_parquet(INPUT_PATH)
@@ -187,13 +188,47 @@ def extract_target_fields(
 def build_training_dataset() -> None:
     games_df = load_games()
 
+    all_training_rows = []
+    skipped_games = 0
+
     for _, game_row in games_df.iterrows():
         game = parse_game_pgn(game_row["pgn"])
 
         if game is None:
+            skipped_games += 1
             continue
 
-        # retrieve training rows and store into parquet
+        # retrieve all training rows and store into parquet
+        # catch invalid values to avoid terminating the entire build
+        try:
+            game_training_rows = extract_training_rows(
+                game=game,
+                game_row=game_row
+            )
+        except (TypeError, ValueError) as error:
+            skipped_games += 1
+            print(
+                f"Skipping game {game_row['uuid']}: "
+                f"invalid time control {game_row['time_control']!r} ({error})"
+            )
+            continue
+
+        all_training_rows.extend(game_training_rows)
+
+    if not all_training_rows:
+        raise RuntimeError("No training rows were created")
+
+    training_df = pd.DataFrame(all_training_rows)
+
+    training_df.to_parquet(
+        OUTPUT_PATH,
+        index=False
+    )
+
+    print(f"Games loaded: {len(games_df)}")
+    print(f"Games skipped: {skipped_games}")
+    print(f"Training positions completed: {len(training_df)}")
+    print(f"Saved: {OUTPUT_PATH}")
 
 if __name__ == "__main__":
     build_training_dataset()
