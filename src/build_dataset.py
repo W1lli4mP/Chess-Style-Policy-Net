@@ -82,16 +82,19 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
 
     valid_rules = df["rules"].eq("chess")
 
-    valid_username = (
-        df["white_username"].isin(usernames) |
-        df["black_username"].isin(usernames)
-    )
+    white_is_known = df["white_username"].isin(usernames)
+    black_is_known = df["black_username"].isin(usernames)
+
+    # track recognised players separately for diagnosis
+    neither_player_known = ~white_is_known & ~black_is_known
+    both_players_known = white_is_known & black_is_known
+    exactly_one_known = white_is_known ^ black_is_known
 
     mask = (
         valid_required &
         valid_time_class &
         valid_rules &
-        valid_username
+        exactly_one_known
     )
 
     #! optional diagnostics for tracking why games were dropped
@@ -99,7 +102,9 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
         print("Missing required value:", (~valid_required).sum())
         print("Invalid time class:", (~valid_time_class).sum())
         print("Rules not chess:", (~valid_rules).sum())
-        print("Username not recognised:", (~valid_username).sum())
+
+        print("Games where neither player is recognised:", neither_player_known.sum())
+        print("Games where both players are recognised:", both_players_known.sum())
 
         # restrict diagnostics to games with the correct time control
         # NOTE: change for testing outside time control
@@ -107,17 +112,22 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
 
         print(
             "Target games missing required values:",
-            (target_class & ~valid_required).sum(),
+            (target_class & ~valid_required).sum()
         )
 
         print(
             "Target games with non-chess rules:",
-            (target_class & ~valid_rules).sum(),
+            (target_class & ~valid_rules).sum()
         )
 
         print(
             "Target games with unrecognised usernames:",
-            (target_class & ~valid_username).sum(),
+            (target_class & neither_player_known).sum()
+        )
+
+        print(
+            "Target games with both players recognised:",
+            (target_class & both_players_known).sum()
         )
 
         #* populate diagnostic df with boolean algebra
@@ -129,14 +139,18 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
         diagnostic_df["invalid_rules"] = (
             ~valid_rules.loc[target_class]
         )
-        diagnostic_df["username_not_recognised"] = (
-            ~valid_username.loc[target_class]
+        diagnostic_df["neither_player_known"] = (
+            neither_player_known.loc[target_class]
+        )
+        diagnostic_df["both_players_known"] = (
+            both_players_known.loc[target_class]
         )
 
         failure_columns = [
             "missing_required",
             "invalid_rules",
-            "username_not_recognised"
+            "neither_player_known",
+            "both_players_known"
         ]
 
         failed = diagnostic_df.loc[
@@ -154,9 +168,7 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
                     "rules",
                     "white_username",
                     "black_username",
-                    "missing_required",
-                    "invalid_rules",
-                    "username_not_recognised",
+                    *failure_columns
                 ]
             ].to_string(index=False)
         )
@@ -199,7 +211,7 @@ def clean_games_dataframe(df: pd.DataFrame, diagnostics: bool = False) -> pd.Dat
 
     df["rating_diff"] = df["my_rating"] - df["opponent_rating"]
 
-    df = df.drop_duplicates(subset=["source_username", "uuid"])
+    df = df.drop_duplicates(subset=["uuid"])
     df = df.sort_values(["source_username", "end_time"])
 
     return df.reset_index(drop=True)
@@ -218,7 +230,7 @@ def build_games_dataset() -> None:
     print(f"Loaded {len(df)} total games")
 
     ## actually filter/clean the data here...
-    df_clean = clean_games_dataframe(df)
+    df_clean = clean_games_dataframe(df, True)
 
     print("\nRemaining games:", len(df_clean))
 
