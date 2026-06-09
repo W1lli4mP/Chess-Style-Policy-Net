@@ -56,6 +56,11 @@ def extract_training_rows(
     """
         process an entire chess game and return a list of training row dicts containing
         all information for the board, context and target branches
+
+        clock nuance:
+            clock_before_move is an input feature
+            move_time_seconds is the target
+            clock_after_move is only used in preprocessing to calculate the target
     """
 
     training_rows = []
@@ -65,7 +70,35 @@ def extract_training_rows(
         game_row["time_control"]
     )
 
-    for move in game.mainline_moves():
+    # initialise to starting times
+    white_clock = float(base_time_seconds)
+    black_clock = float(base_time_seconds)
+
+    for node in game.mainline():
+        move = node.move
+        moving_colour = board.turn
+
+        clock_before_move = {
+            white_clock if moving_colour == chess.WHITE else black_clock
+        }
+
+        clock_after_move = node.clock()
+
+        move_time_seconds = None
+
+        if clock_after_move is not None:
+            raw_move_time = (
+                clock_before_move +
+                increment_seconds -
+                clock_after_move
+            )
+
+            # clip negative times
+            if raw_move_time < -0.1:
+                move_time_seconds = None
+            else:
+                move_time_seconds = max(0.0, move_time_seconds)
+
         # verify turn
         my_turn = (
             board.turn == chess.WHITE
@@ -77,9 +110,15 @@ def extract_training_rows(
 
         # record moves only if they are my turn
         if my_turn:
-            my_clock = None
-            opponent_clock = None
-            move_time_seconds = None
+            my_clock = clock_before_move
+            
+            #* before my move, opponent's stored clock is
+            #* their clock after their previous move
+            opponent_clock = (
+                black_clock
+                if moving_colour == chess.WHITE
+                else white_clock
+            )
 
             # construct training row with all relevant info
             training_row = {
@@ -106,9 +145,15 @@ def extract_training_rows(
 
             training_rows.append(training_row)
 
+        if clock_after_move is not None:
+            if moving_colour == chess.WHITE:
+                white_clock = clock_after_move
+            else:
+                black_clock = clock_after_move
+
         # update the board after recording an entire training row
         board.push(move)
-    
+
     return training_rows
 
 def extract_board_fields(board: chess.Board) -> dict:
