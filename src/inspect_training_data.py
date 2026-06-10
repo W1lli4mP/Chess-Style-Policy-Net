@@ -9,12 +9,14 @@ df = pd.read_parquet(PATH)
 print(df.head())
 print()
 df.info()
+print()
 
 print(f"Rows: {len(df)}")
 print(f"Games: {df['game_uuid'].nunique()}")
+print()
 
 # display training rows/positions for each time control
-print("Time classes")
+print("Time classes:")
 print(df["time_class"].value_counts(dropna=False)) # include NaNs
 print()
 
