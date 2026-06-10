@@ -41,11 +41,11 @@ def parse_game_pgn(pgn: str) -> chess.pgn.Game | None:
 
     return game
 
-def parse_time_control(time_control: str) -> tuple[int, int]:
+def parse_time_control(time_control: str) -> tuple[int, float]:
     # <base-seconds> | <plus> | <increment>
     if "+" in time_control:
         base, increment = time_control.split("+", maxsplit=1)
-        return int(base), int(increment)
+        return int(base), float(increment)
 
     return int(time_control), 0
 
@@ -78,9 +78,9 @@ def extract_training_rows(
         move = node.move
         moving_colour = board.turn
 
-        clock_before_move = {
+        clock_before_move = (
             white_clock if moving_colour == chess.WHITE else black_clock
-        }
+        )
 
         clock_after_move = node.clock()
 
@@ -97,7 +97,7 @@ def extract_training_rows(
             if raw_move_time < -0.1:
                 move_time_seconds = None
             else:
-                move_time_seconds = max(0.0, move_time_seconds)
+                move_time_seconds = max(0.0, raw_move_time)
 
         # verify turn
         my_turn = (
