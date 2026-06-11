@@ -279,7 +279,7 @@ def build_training_dataset() -> None:
             skipped_games += 1
             print(
                 f"Skipping game {game_row['uuid']}: "
-                f"invalid time control {game_row['time_control']!r} ({error})"
+                f"{type(error).__name__}: {error}"
             )
             continue
 
