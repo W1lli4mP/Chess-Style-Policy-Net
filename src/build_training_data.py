@@ -84,20 +84,28 @@ def extract_training_rows(
 
         clock_after_move = node.clock()
 
+        raw_move_time_seconds = None
         move_time_seconds = None
 
+        # marks rows with "impossible" clock times in standard circumstances
+        #? like gaining time in a non-increment game (players can give +15 sec to opponent in unrated/friendly games)
+        clock_anomaly = False
+
         if clock_after_move is not None:
-            raw_move_time = (
+            raw_move_time_seconds = (
                 clock_before_move +
                 increment_seconds -
                 clock_after_move
             )
 
             # clip negative times
-            if raw_move_time < -0.1:
+            if raw_move_time_seconds < -0.1:
+                #* if the clock increases more than a tiny tolerance, the move-time target is unreliable
+                #* edge case: can occur when +15 sec is used
+                clock_anomaly = True
                 move_time_seconds = None
             else:
-                move_time_seconds = max(0.0, raw_move_time)
+                move_time_seconds = max(0.0, raw_move_time_seconds)
 
         # verify turn
         my_turn = (
@@ -123,6 +131,7 @@ def extract_training_rows(
             # construct training row with all relevant info
             training_row = {
                 "game_uuid": game_row["uuid"],
+                "game_url": game_row["url"], # added to retrieve games more easily
                 "my_username": game_row["my_username"],
                 "end_time": game_row["end_time"],
 
@@ -139,7 +148,11 @@ def extract_training_rows(
 
                 **extract_target_fields(
                     move=move,
-                    move_time_seconds=move_time_seconds
+                    move_time_seconds=move_time_seconds,
+                    raw_move_time_seconds=raw_move_time_seconds,
+                    clock_after_move=clock_after_move,
+                    clock_before_move=clock_before_move,
+                    clock_anomaly=clock_anomaly
                 )
             }
 
@@ -221,10 +234,22 @@ def extract_context_fields(
 
 def extract_target_fields(
     move: chess.Move,
-    move_time_seconds: float | None
+    move_time_seconds: float | None,
+    raw_move_time_seconds: float | None,
+    clock_before_move: float | None,
+    clock_after_move: float | None,
+    clock_anomaly: bool
 ) -> dict:
     return {
         "uci_move": move.uci(),
+
+        # preprocessing clock fields (FOR DEBUGGING)
+        "clock_before_move_seconds": clock_before_move,
+        "clock_after_move_seconds": clock_after_move,
+        "raw_move_time_seconds": raw_move_time_seconds,
+        "clock_anomaly": clock_anomaly,
+
+        # actual targets
         "move_time_seconds": move_time_seconds,
         "move_time_bucket": get_move_time_bucket(move_time_seconds),
         "has_move_time_target": move_time_seconds is not None
