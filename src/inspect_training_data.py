@@ -35,5 +35,3 @@ print("Ratings:")
 desc_df = df[["my_rating", "opponent_rating", "rating_diff"]].describe()
 print(desc_df)
 print()
-
-#! 6 NaNs in move-time buckets
