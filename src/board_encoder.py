@@ -5,10 +5,18 @@ import pandas as pd
 import chess
 import torch
 from torch.utils.data import Dataset, DataLoader
+from pathlib import Path
 
 BATCH_SIZE = 64
 class ChessPositionDataset(Dataset):
     def __init__(self, parquet_path: str):
+        parquet_path = Path(parquet_path)
+
+        if not parquet_path.exists():
+            raise FileNotFoundError(
+                f"Parquet file does not exist: {parquet_path.resolve()}"
+            )
+
         self.rows = pd.read_parquet(parquet_path)
 
     def __len__(self) -> int:
@@ -33,7 +41,7 @@ def encode_board(board: chess.Board):
     )
 
     # validate encoded board dimensions
-    assert encode_board.shape == (18, 8, 8)
+    assert encoded_board.shape == (18, 8, 8)
 
     return encoded_board
 
@@ -42,7 +50,7 @@ def encode_board(board: chess.Board):
 
 # 12 planes representing the piece info (12x8x8)
 def encode_piece_info(board: chess.Board) -> torch.Tensor:
-    planes = torch.zeros((6, 8, 8), dtype=torch.float32)
+    planes = torch.zeros((12, 8, 8), dtype=torch.float32)
 
     # composite key of piece type and piece colour
     piece_to_channel = {
@@ -65,7 +73,7 @@ def encode_piece_info(board: chess.Board) -> torch.Tensor:
         channel = piece_to_channel[(piece.piece_type, piece.color)]
         row = chess.square_rank(square)
         col = chess.square_file(square)
-        planes[channel][row][col] = 1.0
+        planes[channel, row, col] = 1.0
     
     return planes
 
@@ -120,7 +128,7 @@ def encode_game_info(board: chess.Board) -> torch.Tensor:
     )
 
 if __name__ == "__main__":
-    dataset = ChessPositionDataset("../data/processed/training_positions.parquet")
+    dataset = ChessPositionDataset("data/processed/training_positions.parquet")
 
     loader = DataLoader(
         dataset,
