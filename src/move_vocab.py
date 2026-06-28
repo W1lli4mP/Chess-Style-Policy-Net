@@ -65,6 +65,15 @@ def build_move_vocabulary() -> tuple[dict[str, int], list[str]]:
                 if not 0 <= destination_file < 8:
                     continue
                 
+                # construct from and to squares
+                from_square = chess.square(
+                    source_file, source_rank
+                )
+
+                to_square = chess.square(
+                    destination_file, destination_rank
+                )
+
                 for promotion_piece in PROMOTION_PIECES:
                     move = chess.Move(
                         from_square=from_square,
