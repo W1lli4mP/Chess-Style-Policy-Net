@@ -2,12 +2,7 @@ import torch
 import torch.nn as nn
 from residual_block import ResidualBlock
 
-"""
-usage
-x = encode_board()
-chess_nn = ChessResNet()
-chess_nn.forward(x) for inference
-"""
+BOARD_EMBEDDING_DIM = 256
 
 class ChessResNet(nn.Module):
     def __init__(
@@ -15,7 +10,7 @@ class ChessResNet(nn.Module):
         in_channels: int = 18,
         hidden_channels: int = 64,
         num_res_blocks: int = 4,
-        board_embedding_dim: int = 256
+        board_embedding_dim: int = BOARD_EMBEDDING_DIM
     ):
         super().__init__()
 
@@ -50,8 +45,8 @@ class ChessResNet(nn.Module):
         )
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        self.projection(x)
-        self.res_blocks(x)
-        self.fc(x)
+        x = self.projection(x)
+        x = self.res_blocks(x)
+        x = self.fc(x)
         
         return x
