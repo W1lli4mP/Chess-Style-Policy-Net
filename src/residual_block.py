@@ -11,29 +11,39 @@ class ResidualBlock(nn.Module):
     def __init__(self, channels: int):
         super().__init__()
 
-        #* 1 res block has 2 convolution layers
+        #* 1 res block has 2 convolution layers with 2 batch norms
         self.conv1 = nn.Conv2d(
             in_channels=channels,
-            out_channels=OUT_CHANNELS,
+            out_channels=channels,
             kernel_size=KERNEL_SIZE,
             padding=PADDING
         )
+
+        self.bn1 = nn.BatchNorm2d(channels)
 
         self.conv2 = nn.Conv2d(
-            in_channels=OUT_CHANNELS,
-            out_channels=OUT_CHANNELS,
+            in_channels=channels,
+            out_channels=channels,
             kernel_size=KERNEL_SIZE,
             padding=PADDING
         )
 
-    # temp
-    def get_residual_output(self, x: torch.tensor):
-        # x is either the encoded board tensor or y from another res block
-        #! resolve input channel mismatch
-        # produce feature maps
-        y1 = self.conv1(x)
-        y2 = self.conv2(y1)
-        #! could use
-        #! nn.Sequential(self.conv1, self.conv2)
+        self.bn2 = nn.BatchNorm2d(channels)
 
-        return y2
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x: torch.tensor):
+        # y = F(x) + x
+        residual = x
+
+        fx = self.conv1(x)
+        fx = self.bn1(y)
+        fx = self.relu(y)
+
+        fx = self.conv2(y)
+        fx = self.bn2(y)
+        
+        y = fx + residual
+        y = self.relu(y)
+
+        return y
