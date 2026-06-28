@@ -6,14 +6,25 @@ import torch
 from torch.utils.data import DataLoader
 
 class PolicyNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, num_moves: int):
         super().__init__()
 
         self.board_nn = ChessResNet()
         self.context_nn = ContextMLP()
 
-        # self.policy_head = ...
-        # self.movetime_head = ...
+        # (batch_size, 320) -> (batch_size, num_moves)
+        self.policy_head = nn.Sequential(
+            nn.Linear(320, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, num_moves)
+        )
+
+        # (batch_size, 320) -> (batch_size, 5)
+        self.move_time_head = nn.Sequential(
+            nn.Linear(320, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, 5)
+        )
     
     def forward(self, board_batch: torch.Tensor, context_batch: torch.Tensor) -> torch.Tensor:
         shared_embedding = self.get_shared_embedding(
