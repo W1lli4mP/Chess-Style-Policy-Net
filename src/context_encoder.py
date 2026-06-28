@@ -24,7 +24,7 @@ def encode_context(row: pd.Series) -> torch.Tensor:
         float(row["opponent_clock_seconds"]),
         float(row["my_clock_to_base_ratio"]),
         float(row["opponent_clock_to_base_ratio"]),
-        float(row["play"]),
+        float(row["ply"]),
         float(row["fullmove_number"]),
         float(row["rating_diff"]),
         float(row["opponent_rating"]),
