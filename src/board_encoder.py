@@ -3,8 +3,6 @@
 
 import chess
 import torch
-from torch.utils.data import DataLoader
-from chess_position_dataset import ChessPositionDataset
 
 BATCH_SIZE = 64
 
@@ -106,6 +104,9 @@ def encode_game_info(board: chess.Board) -> torch.Tensor:
     )
 
 if __name__ == "__main__":
+    from chess_position_dataset import ChessPositionDataset
+    from torch.utils.data import DataLoader
+
     dataset = ChessPositionDataset("data/processed/training_positions.parquet")
 
     loader = DataLoader(

@@ -1,9 +1,7 @@
 from resnet_cnn import ChessResNet
 from context_mlp import ContextMLP
-from board_encoder import ChessPositionDataset
 import torch.nn as nn
 import torch
-from torch.utils.data import DataLoader
 
 class PolicyNetwork(nn.Module):
     def __init__(self, num_moves: int):
@@ -61,7 +59,10 @@ class PolicyNetwork(nn.Module):
         
 #! temp
 if __name__ == "__main__":
-    policy_net = PolicyNetwork()
+    from chess_position_dataset import ChessPositionDataset
+    from torch.utils.data import DataLoader
+
+    policy_net = PolicyNetwork(5000)
 
     dataset = ChessPositionDataset("data/processed/training_positions.parquet")
 
@@ -74,3 +75,5 @@ if __name__ == "__main__":
     # process each batch
     for board_batch, context_batch in loader:
         policy_logits, move_time_logits = policy_net(board_batch, context_batch)
+
+        print(policy_logits.shape, move_time_logits.shape)
