@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from residual_block import ResidualBlock
-from board_encoder import encode_board
 
 """
 usage
