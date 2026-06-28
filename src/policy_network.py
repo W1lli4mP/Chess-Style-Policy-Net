@@ -47,10 +47,10 @@ class PolicyNetwork(nn.Module):
 
     def get_shared_embedding(self, board_batch: torch.Tensor, context_batch: torch.Tensor) -> torch.Tensor:
         x_board = board_batch
-        board_embedding = self.board_nn.forward(x_board)
+        board_embedding = self.board_nn(x_board)
 
         x_context = context_batch
-        context_embedding = self.context_nn.forward(x_context)
+        context_embedding = self.context_nn(x_context)
 
         shared_embedding = torch.cat(
             [board_embedding, context_embedding],
@@ -73,4 +73,4 @@ if __name__ == "__main__":
 
     # process each batch
     for board_batch, context_batch in loader:
-        policy_net.forward(board_batch, context_batch)
+        policy_logits, move_time_logits = policy_net(board_batch, context_batch)
