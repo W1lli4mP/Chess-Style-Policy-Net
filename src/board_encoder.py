@@ -4,16 +4,23 @@
 import pandas as pd
 import chess
 import torch
+from torch.utils.data import Dataset, DataLoader
 
-#! implement custom pytorch dataset class to use leverage batch encoding
-def encode_boards():
-    training_rows = pd.read_parquet("../data/processed/training_positions.parquet")
+BATCH_SIZE = 64
+class ChessPositionDataset(Dataset):
+    def __init__(self, parquet_path: str):
+        self.rows = pd.read_parquet(parquet_path)
 
-    for _, training_row in training_rows.iterrows():
-        fen_str = training_row["fen_before_move"]
+    def __len__(self) -> int:
+        return len(self.rows)
 
-        son = chess.Board(fen_str)
-        encode_board(son)
+    def __getitem__(self, index: int):
+        row = self.rows.iloc[index]
+
+        board = chess.Board(row["fen_before_move"])
+        board_tensor = encode_board(board)
+
+        return board_tensor
 
 def encode_board(board: chess.Board):
     piece_info_planes = encode_piece_info(board) # (12, 8, 8)
@@ -35,13 +42,6 @@ def encode_board(board: chess.Board):
 
 # 12 planes representing the piece info (12x8x8)
 def encode_piece_info(board: chess.Board) -> torch.Tensor:
-    """
-    plan
-    initialise all piece planes
-    iterate through board until piece_count() == 0
-    update while iterating
-    """
-
     planes = torch.zeros((6, 8, 8), dtype=torch.float32)
 
     # composite key of piece type and piece colour
@@ -118,3 +118,15 @@ def encode_game_info(board: chess.Board) -> torch.Tensor:
             enc_en_passant_target
         ]
     )
+
+if __name__ == "__main__":
+    dataset = ChessPositionDataset("../data/processed/training_positions.parquet")
+
+    loader = DataLoader(
+        dataset,
+        batch_size=64,
+        shuffle=True
+    )
+
+    for board_batch in loader:
+        print(board_batch.shape)
