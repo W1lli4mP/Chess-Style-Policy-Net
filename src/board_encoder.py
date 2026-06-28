@@ -4,7 +4,7 @@
 import chess
 import torch
 from torch.utils.data import DataLoader
-from chess_position_datasest import ChessPositionDataset
+from chess_position_dataset import ChessPositionDataset
 
 BATCH_SIZE = 64
 
