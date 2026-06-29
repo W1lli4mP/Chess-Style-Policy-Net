@@ -31,7 +31,7 @@ PROMOTION_PIECES = (
     chess.QUEEN
 )
 
-# move_to_id, moves
+# move_to_id, id_to_move
 def build_move_vocabulary() -> tuple[dict[str, int], list[str]]:
     # construct list of uci moves
     moves = []
@@ -86,9 +86,18 @@ def build_move_vocabulary() -> tuple[dict[str, int], list[str]]:
         uci_move: move_id for move_id, uci_move in enumerate(moves)
     }
 
-    return move_to_id, moves
+    # the id is the index to its corresponding move
+    id_to_move = moves
+
+    return move_to_id, id_to_move
 
 if __name__ == "__main__":
     # test
-    x, y = build_move_vocabulary()
-    print(len(x), len(y))
+    move_to_id, id_to_move = build_move_vocabulary()
+
+    move_id = move_to_id["e2e4"]
+    uci_move = id_to_move[move_id]
+
+    assert uci_move == "e2e4"
+    assert len(move_to_id) == len(id_to_move) == 4208
+    assert len(id_to_move) == len(set(id_to_move))
