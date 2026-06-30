@@ -28,4 +28,28 @@ class ChessPositionDataset(Dataset):
 
         context_tensor = encode_context(row)
 
-        return board_tensor, context_tensor
+        #! convert uci move to id and store
+        move_target = None
+
+        # construct move-time target
+        has_time_target = row["has_move_time_target"]
+
+        #? long dtype since cross entropy expects a 64-bit int tensor
+        move_time_target = torch.tensor(
+            row["move_time_bucket"]
+            if has_time_target else 0,
+            dtype=torch.long
+        )
+
+        move_time_mask = torch.tensor(
+            has_time_target,
+            dtype=torch.bool
+        )
+
+        return (
+            board_tensor,
+            context_tensor,
+            move_target,
+            move_time_target,
+            move_time_mask
+        )
