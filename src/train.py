@@ -2,10 +2,14 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import time
+from pathlib import Path
 
 from policy_network import PolicyNetwork
 from chess_position_dataset import ChessPositionDataset
 from move_vocab import MOVE_VOCAB_SIZE
+
+CHECKPOINT_PATH = Path("models/latest_policy_net.pt")
+CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 #* hyperparams
 EPOCHS = 30
@@ -30,6 +34,8 @@ loader = DataLoader(
     batch_size=64,
     shuffle=True
 )
+
+num_batches = len(loader)
 
 optimiser = torch.optim.AdamW(
     policy_net.parameters(),
@@ -110,13 +116,12 @@ for epoch in range(1, EPOCHS + 1):
 
             print(
                 f"Epoch {epoch}/{EPOCHS} | "
-                f"batch {batch_index}/{len(loader)} | "
+                f"batch {batch_index}/{num_batches} | "
                 f"loss {loss.item():.4f} | "
                 f"elapsed {elapsed:.1f}s",
                 flush=True
             )
 
-    num_batches = len(loader)
     elapsed = time.perf_counter() - epoch_start
 
     print(
@@ -127,3 +132,20 @@ for epoch in range(1, EPOCHS + 1):
         f"time={elapsed:.1f}s",
         flush=True
     )
+
+    # overwrite saved model with latest one per epoch
+    #? in case training process gets interrupted
+    torch.save(
+        {
+            "epoch": epoch,
+            "model_state_dict": policy_net.state_dict(),
+            "optimiser_state_dict": optimiser.state_dict(),
+            "move_vocab_size": MOVE_VOCAB_SIZE,
+            "move_time_loss_weight": MOVE_TIME_LOSS_WEIGHT,
+            "learning_rate": LEARNING_RATE,
+            "weight_decay": WEIGHT_DECAY,
+        },
+        CHECKPOINT_PATH,
+    )
+
+    print(f"Saved checkpoint after epoch {epoch}")
