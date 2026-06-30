@@ -91,6 +91,10 @@ def build_move_vocabulary() -> tuple[dict[str, int], list[str]]:
 
     return move_to_id, id_to_move
 
+#* generated constants
+MOVE_TO_ID, ID_TO_MOVE = build_move_vocabulary()
+MOVE_VOCAB_SIZE = len(ID_TO_MOVE)
+
 if __name__ == "__main__":
     # test
     move_to_id, id_to_move = build_move_vocabulary()
@@ -99,5 +103,7 @@ if __name__ == "__main__":
     uci_move = id_to_move[move_id]
 
     assert uci_move == "e2e4"
-    assert len(move_to_id) == len(id_to_move) == 4208
+    assert len(move_to_id) == len(id_to_move) == MOVE_VOCAB_SIZE
     assert len(id_to_move) == len(set(id_to_move))
+
+    print(f"Move vocabulary size: {MOVE_VOCAB_SIZE}")

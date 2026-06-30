@@ -4,7 +4,7 @@ import chess
 import pandas as pd
 from board_encoder import encode_board
 from context_encoder import encode_context
-from move_vocab import build_move_vocabulary
+from move_vocab import MOVE_TO_ID
 import torch
 
 class ChessPositionDataset(Dataset):
@@ -17,9 +17,6 @@ class ChessPositionDataset(Dataset):
             )
 
         self.rows = pd.read_parquet(parquet_path)
-
-        # build move vocab once instead of every iteration
-        self.move_to_id, self.id_to_move = build_move_vocabulary()
 
     def __len__(self) -> int:
         return len(self.rows)
@@ -36,7 +33,7 @@ class ChessPositionDataset(Dataset):
         uci_move = row["uci_move"]
 
         try:
-            move_id = self.move_to_id[uci_move]
+            move_id = MOVE_TO_ID[uci_move]
         except KeyError as e:
             raise ValueError(
                 f"Move {uci_move!r} is not present in the move vocabulary"
