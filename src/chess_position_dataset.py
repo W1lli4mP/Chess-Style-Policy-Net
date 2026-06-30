@@ -4,6 +4,7 @@ import chess
 import pandas as pd
 from board_encoder import encode_board
 from context_encoder import encode_context
+from move_vocab import build_move_vocabulary
 import torch
 
 class ChessPositionDataset(Dataset):
@@ -17,6 +18,9 @@ class ChessPositionDataset(Dataset):
 
         self.rows = pd.read_parquet(parquet_path)
 
+        # build move vocab once instead of every iteration
+        self.move_to_id, self.id_to_move = build_move_vocabulary()
+
     def __len__(self) -> int:
         return len(self.rows)
 
@@ -28,8 +32,17 @@ class ChessPositionDataset(Dataset):
 
         context_tensor = encode_context(row)
 
-        #! convert uci move to id and store
-        move_target = None
+        # construct move target + validation
+        uci_move = row["uci_move"]
+
+        try:
+            move_id = self.move_to_id[uci_move]
+        except KeyError as e:
+            raise ValueError(
+                f"Move {uci_move!r} is not present in the move vocabulary"
+            ) from e
+
+        move_target = move_id
 
         # construct move-time target
         has_time_target = row["has_move_time_target"]
