@@ -21,7 +21,7 @@ class ChessPositionDataset(Dataset):
     def __len__(self) -> int:
         return len(self.rows)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         row = self.rows.iloc[index]
 
         board = chess.Board(row["fen_before_move"])
